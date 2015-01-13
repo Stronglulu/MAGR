@@ -22,9 +22,10 @@ private:
 	TriangleMesh *mesh;
 	SimpleGLMeshMaterial *renderer;
 	ExaminerCameraController* controller;
-	tuple<Vector3f, Vector3f> rays[101][101];
-	Vector3f colours[101][101];
-	int 	size = 100;
+	tuple<Vector3f, Vector3f> rays[401][401];
+	Vector3f colours[401][401];
+	int 	size = 400;
+
 public:
 
 	MyMeshExperiment();
@@ -36,13 +37,15 @@ public:
 	void getViewerInfo();
 	void getRays();
 	void shootRays();
-	bool checkShadow(tuple<Vector3f, Vector3f>, float);
+	bool checkShadow(tuple<Vector3f, Vector3f>, float,Vector3f);
+	float getSoftShadow(tuple<Vector3f, Vector3f>, float, Vector3f);
 
 	int32 gridSize;
 	Vector3f incomingRay;                           // <---
 	Vector3f vertex1;
 	Vector3f vertex2;
 	Vector3f vertex3;
+	bool softShadows = true;
 	//Matrix3f triangleRefl;                           // <--- declare the parameters you need (will be registered in *.cpp file)
 
 	void calculateDot();
