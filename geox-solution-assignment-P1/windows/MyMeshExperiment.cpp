@@ -158,14 +158,15 @@ void MyMeshExperiment::shootRays()
 			float distance;											// <-- scalar multiplied with ray direction is distance
 			float minDistance = 99999;								// <-- used to find nearest triangle
 			int minDistanceId = -1;									// <-- check for background
-			Vector3f bestColour;
+			Vector3f bestColour, objectColour;
 			Vector3f outgoingRay;
 			bool thereWasARefelction = false;
 			
 			bool thereIsAReflection = false;
 			// loop over triangle
 			const card32 numTri = idx->getNumEntries();
-			for (card32 i = 0; i < numTri; i++) {
+			for (card32 i = 0; i < numTri; i++) 
+			{
 				Vector3i tind = idx->get<int32, 3>(i, IDX);			// <-- triangle index of vertices (comes from triangle dynamic thing)
 				Vector3f triangle[3];								// <-- position of all vertices of the triangle
 				triangle[0] = pts->get<float32, 3>(tind[0], POS);
@@ -176,22 +177,35 @@ void MyMeshExperiment::shootRays()
 				// get intersection + distance
 				bool xt = tri->getIntersection(std::get<0>(ray), std::get<1>(ray), triangle, distance);		// <-- distance is a result
 				if (xt)
+				{
 					if (distance < minDistance)						// <-- check if closest
 					{
 						getOutgoingReflection(std::get<1>(ray), triangle, outgoingRay); // get outgoing ray for reflection
 						minDistance = distance;							// <-- set current triangle as closest					
 						minDistanceId = i;								// <-- a check to see if current current triangle is closer than existing
-					
+
+						if (x == 103 && y == 103)
+							int x = 0;
 						// calculations for local shading
 						Vector3f hit = (std::get<0>(ray) +std::get<1>(ray)*distance);				// <-- location of where ray hit triangle 
 						Vector3f lightPos = makeVector3f(0, 80, 0);
 						Vector3f light = lightPos - hit;								// <-- intersection to lightsource vector
-						Vector3f normal;
+						Vector3f normal = makeVector3f(0,0,0);
 						calculateSurfaceNormal(triangle, normal);
 						light.normalize();
 						normal.normalize();
 						normal = makeVector3f(0, 0, 0) - normal;
-						float weight =std::abs(light * normal);
+						float weight = std::abs(light * normal);
+
+						if (hit[1] < 0) //plane
+						{
+							pts->set<float32, 3>(tind[0], COL, makeVector3f(0, 1, 0));
+							pts->set<float32, 3>(tind[1], COL, makeVector3f(0, 1, 0));
+							pts->set<float32, 3>(tind[2], COL, makeVector3f(0, 1, 0));
+						}
+						else
+							pts->set<float32, 3>(tind[0], COL, makeVector3f(1, 1, 1));
+						objectColour = pts->get<float32, 3>(tind[0], COL);
 
 						// Calculate shadows.
 						if (softShadows)
@@ -202,8 +216,9 @@ void MyMeshExperiment::shootRays()
 								bestColour = makeVector3f((weight + 0.1f) / 1.1f, (weight + 0.1f) / 1.1f, (weight + 0.1f) / 1.1f);
 							else
 								bestColour = makeVector3f((weight + 0.1f) / 1.1f  * shadowWeight, (weight + 0.1f) / 1.1f * shadowWeight, (weight + 0.1f) / 1.1f * shadowWeight);		// <-- default object color (almost black)
+						
 						}
-						else
+						else //hard shadows
 						{
 							bool shadow = checkShadow(ray, distance, lightPos);		// <-- check if there are triangles blocking the light
 							if (!shadow)
@@ -212,62 +227,157 @@ void MyMeshExperiment::shootRays()
 							{
 								bestColour = makeVector3f(0.1, 0.1, 0.1);		// <-- default shadow color (almost black)
 								//bestColour = (colour[0] / 3 + colour[1] / 3 + colour[2] / 3)*0.3;	
+							}	
+						}
+
+						Vector3f objAndShadowCol = (objectColour + bestColour) / 2;
+						
+						/*pts->set3f(tind[0], COL, objAndShadowCol);
+						pts->set3f(tind[1], COL, objAndShadowCol);
+						pts->set3f(tind[2], COL, objAndShadowCol);*/
+						
+						pts->set<float32, 3>(tind[0], COL, objAndShadowCol);
+						pts->set<float32, 3>(tind[1], COL, objAndShadowCol);
+						pts->set<float32, 3>(tind[2], COL, objAndShadowCol);
+
+
+
+
+						// Calculate Reflection
+						float distance2;											// <-- scalar multiplied with ray direction is distance
+						float minDistance2 = 99999;								// <-- used to find nearest triangle
+						int minDistanceId2 = -1;									// <-- check for background
+						Vector3f bestColour2;
+
+						//Vector3f newhit = std::get<0>(ray) +std::get<1>(ray)*minDistance;
+						thereWasARefelction = false;
+						for (card32 j = 0; j < numTri; j++)
+						{
+							Vector3i tind2 = idx->get<int32, 3>(j, IDX);			// <-- triangle index of vertices (comes from triangle dynamic thing)
+							Vector3f pos2[3];									// <-- position of all vertices of the triangle
+							pos2[0] = pts->get<float32, 3>(tind2[0], POS);
+							pos2[1] = pts->get<float32, 3>(tind2[1], POS);
+							pos2[2] = pts->get<float32, 3>(tind2[2], POS);
+
+
+							// get intersection + distance
+							thereIsAReflection = tri->getIntersection(hit + outgoingRay*0.02, outgoingRay, pos2, distance2);		// <-- distance is a result
+							if (thereIsAReflection)
+							{
+								
+								if (distance2 < minDistance2)						// <-- check if closest
+								{
+									thereWasARefelction = true;
+									minDistance2 = distance2;							// <-- set current triangle as closest
+									minDistanceId2 = j;								// <-- a check to see if current current triangle is closer than existing
+
+									//if (hit[1] <= 0)
+									//{
+									//	//if (mod(hit[0] / 20, 2) == mod(hit[2] / 20, 2))
+									//		pts->set<float32, 3>(tind2[0], COL, makeVector3f(0, 1, 0));
+									//}
+									Vector3f colour2[3];
+									colour2[0] = pts->get<float32, 3>(tind2[0], COL);
+									colour2[1] = pts->get<float32, 3>(tind2[1], COL);
+									colour2[2] = pts->get<float32, 3>(tind2[2], COL);
+
+									bestColour2 = (colour2[0] + colour2[1] + colour2[2]) / 3; //makeVector3f(1, 0, 0);//
+
+									if (x > 95 && x < 105 && y > 95 && y < 105)
+										output << bestColour2 << " " << x << " " << y << " " << j << " " << distance2 << " ray: " << get<1>(ray) << " outgoing ray: " << outgoingRay << " normal: " << hit << "\n";
+
+									/*pts->set<float32, 3>(tind[0], COL, bestColour2);
+									pts->set<float32, 3>(tind[1], COL, bestColour2);
+									pts->set<float32, 3>(tind[2], COL, bestColour2);*/
+
+
+
+								}
 							}
 						}
+						if (thereWasARefelction)
+							colours[x][y] = bestColour2;
+						else
+							colours[x][y] = pts->get<float32, 3>(tind[0], COL);
+						//if (minDistanceId2 == -1) // <-- no collision on the reflected ray so no colour
+						//{
+						//	bestColour2[0] = 0;
+						//	bestColour2[1] = 0;
+						//	bestColour2[2] = 0;
+						//}
+
+						//colours[x][y] = bestColour2; //pts->get<float32, 3>(tind[0], COL); //objAndShadowCol;//(bestColour2 + bestColour + objectColour) / 3; //(objAndShadowCol + bestColour2) / 2; //(bestColour2 + bestColour + objectColour) / 3;
+						
+						/*if (x >= 95 && x <= 105 && y >= 95 && y <= 105)
+							output << colours[x][y] << " " << x << " " << y << "\n";*/
 					}
-			}
-			if (minDistanceId == -1) // <-- no collision so no colour
-			{
-				bestColour[0] = 0;
-				bestColour[1] = 0;
-				bestColour[2] = 0;
-			}
-			else // do reflection
-			{
-				// REFLECTION CALCULATION
-				float distance2;											// <-- scalar multiplied with ray direction is distance
-				float minDistance2 = 99999;								// <-- used to find nearest triangle
-				int minDistanceId2 = -1;									// <-- check for background
-				Vector3f bestColour2;
-
-				Vector3f hit = std::get<0>(ray) +std::get<1>(ray)*minDistance;
-				thereWasARefelction = false;
-				for (card32 j = 0; j < numTri; j++) {
-					Vector3i tind2 = idx->get<int32, 3>(j, IDX);			// <-- triangle index of vertices (comes from triangle dynamic thing)
-					Vector3f pos2[3];									// <-- position of all vertices of the triangle
-					pos2[0] = pts->get<float32, 3>(tind2[0], POS);
-					pos2[1] = pts->get<float32, 3>(tind2[1], POS);
-					pos2[2] = pts->get<float32, 3>(tind2[2], POS);
-
-
-					// get intersection + distance
-					thereIsAReflection = tri->getIntersection(hit + outgoingRay*0.02, outgoingRay, pos2, distance2);		// <-- distance is a result
-					if (thereIsAReflection)
-						if (distance2 < minDistance2)						// <-- check if closest
-						{
-							thereWasARefelction = true;
-							minDistance2 = distance2;							// <-- set current triangle as closest
-							minDistanceId2 = j;								// <-- a check to see if current current triangle is closer than existing
-							Vector3f colour2[3];
-							colour2[0] = pts->get<float32, 3>(tind2[0], COL);
-							colour2[1] = pts->get<float32, 3>(tind2[1], COL);
-							colour2[2] = pts->get<float32, 3>(tind2[2], COL);
-
-							bestColour2 = makeVector3f(1, 0, 0);//(colour2[0] + colour2[1] + colour2[2]) / 3;
-						}
 				}
-				if (minDistanceId2 == -1) // <-- no collision on the reflected ray so no colour
-				{
-					bestColour2[0] = 0;
-					bestColour2[1] = 0;
-					bestColour2[2] = 0;
-				}
-				colours[x][y] = bestColour2;
+				//else
+				//{
+				//	colours[x][y] = makeVector3f(0, 0, 0);
+				//	/*bestColour[0] = 0;
+				//	bestColour[1] = 0;
+				//	bestColour[2] = 0;*/					
+				//}
 			}
-			if (!thereWasARefelction)
-				colours[x][y] = bestColour;
+			//if (minDistanceId == -1) // <-- no collision so no colour
+			//{
+			//	bestColour[0] = 0;
+			//	bestColour[1] = 0;
+			//	bestColour[2] = 0;
+			//}
+			//else // do reflection
+			//{
+			//	// REFLECTION CALCULATION
+			//	float distance2;											// <-- scalar multiplied with ray direction is distance
+			//	float minDistance2 = 99999;								// <-- used to find nearest triangle
+			//	int minDistanceId2 = -1;									// <-- check for background
+			//	Vector3f bestColour2;
+
+			//	Vector3f hit = std::get<0>(ray) +std::get<1>(ray)*minDistance;
+			//	thereWasARefelction = false;
+			//	for (card32 j = 0; j < numTri; j++) {
+			//		Vector3i tind2 = idx->get<int32, 3>(j, IDX);			// <-- triangle index of vertices (comes from triangle dynamic thing)
+			//		Vector3f pos2[3];									// <-- position of all vertices of the triangle
+			//		pos2[0] = pts->get<float32, 3>(tind2[0], POS);
+			//		pos2[1] = pts->get<float32, 3>(tind2[1], POS);
+			//		pos2[2] = pts->get<float32, 3>(tind2[2], POS);
+
+
+			//		// get intersection + distance
+			//		thereIsAReflection = tri->getIntersection(hit + outgoingRay*0.02, outgoingRay, pos2, distance2);		// <-- distance is a result
+			//		if (thereIsAReflection)
+			//			if (distance2 < minDistance2)						// <-- check if closest
+			//			{
+			//				thereWasARefelction = true;
+			//				minDistance2 = distance2;							// <-- set current triangle as closest
+			//				minDistanceId2 = j;								// <-- a check to see if current current triangle is closer than existing
+			//				
+			//				//if (hit[1] <= 0)
+			//				//{
+			//				//	//if (mod(hit[0] / 20, 2) == mod(hit[2] / 20, 2))
+			//				//		pts->set<float32, 3>(tind2[0], COL, makeVector3f(0, 1, 0));
+			//				//}
+			//				Vector3f colour2[3];
+			//				colour2[0] = pts->get<float32, 3>(tind2[0], COL);
+			//				colour2[1] = pts->get<float32, 3>(tind2[1], COL);
+			//				colour2[2] = pts->get<float32, 3>(tind2[2], COL);
+
+			//				bestColour2 =(colour2[0] + colour2[1] + colour2[2] + objectColour) / 4; //makeVector3f(1, 0, 0);//
+			//			}
+			//	}
+			//	if (minDistanceId2 == -1) // <-- no collision on the reflected ray so no colour
+			//	{
+			//		bestColour2[0] = 0;
+			//		bestColour2[1] = 0;
+			//		bestColour2[2] = 0;
+			//	}
+			//	colours[x][y] = bestColour2;
+			//}
+			/*if (!thereWasARefelction)
+				colours[x][y] = (bestColour + objectColour)/2;
 			else
-				colours[x][y] = bestColour*0.5 + colours[x][y] * 0.5;
+				colours[x][y] = bestColour*0.5 + colours[x][y] * 0.5;*/
 		}//rays
 	}
 	delete tri;
@@ -294,8 +404,12 @@ void MyMeshExperiment::calculateMatrixNormal()
 
 void MyMeshExperiment::calculateSurfaceNormal(Vector3f triangle[3], Vector3f &normal)
 {
-	Vector3f t = ((triangle[2] - triangle[0]).crossProduct(triangle[1] - triangle[0]));
-	normal = t / norm(t);
+	Vector3f n = ((triangle[1] - triangle[0]).crossProduct(triangle[2] - triangle[0]));
+	float lengthNorm = norm(n);
+	if (lengthNorm > 0)
+		normal = n / lengthNorm;
+	else
+	normal = n;
 }
 
 void MyMeshExperiment::getOutgoingReflection(Vector3f incomingRay, Vector3f triangle[3], Vector3f &outgoingRay)
@@ -306,7 +420,8 @@ void MyMeshExperiment::getOutgoingReflection(Vector3f incomingRay, Vector3f tria
 	Vector3f ri = incomingRay;
 	Vector3f d = ri.componentProduct(normal);
 	float dotProd = d[0] + d[1] + d[2];
-	outgoingRay = ri - (normal.operator*(2)).operator*(dotProd);	
+	//outgoingRay = ri - (normal.operator*(2)).operator*(dotProd);
+	outgoingRay = ri - normal*((normal*ri)*2.0f);
 }
 
 float MyMeshExperiment::getSoftShadow(tuple<Vector3f, Vector3f> ray, float distance, Vector3f areaLightPos)
@@ -401,6 +516,17 @@ bool MyMeshExperiment::checkShadow(tuple<Vector3f, Vector3f> ray, float distance
 			return true;		//There is shadow.
 	}
 	return false;
+}
+
+int MyMeshExperiment::mod(float f, int i)
+{
+	int x;
+	if (f >= 0)
+		x = (int)f%i;
+	else
+		x = 1 - (((int)f%i + i) % i);
+
+	return x;
 }
 
 void MyMeshExperiment::saveImage()
