@@ -154,11 +154,11 @@ void MyMeshExperiment::shootRays()
 		for (int y = 0; y <= size; y++)
 		{
 
-			tuple<Vector3f, Vector3f> ray = rays[x][y];
+			tuple<Vector3f, Vector3f> ray = rays[x][y];				// 0: ray origin 1: ray direction
 			float distance;											// <-- scalar multiplied with ray direction is distance
 			float minDistance = 99999;								// <-- used to find nearest triangle
 			int minDistanceId = -1;									// <-- check for background
-			Vector3f bestColour, objectColour;
+			Vector3f bestColour, objectColour, shadowColour;
 			Vector3f outgoingRay;
 			bool thereWasARefelction = false;
 			
@@ -181,14 +181,13 @@ void MyMeshExperiment::shootRays()
 					if (distance < minDistance)						// <-- check if closest
 					{
 						getOutgoingReflection(std::get<1>(ray), triangle, outgoingRay); // get outgoing ray for reflection
+						reflectRays[x][y] = outgoingRay;
 						minDistance = distance;							// <-- set current triangle as closest					
+						minDistances[x][y] = distance;
 						minDistanceId = i;								// <-- a check to see if current current triangle is closer than existing
 
-						if (x == 103 && y == 103)
-							int x = 0;
 						// calculations for local shading
 						Vector3f hit = (std::get<0>(ray) +std::get<1>(ray)*distance);				// <-- location of where ray hit triangle 
-						Vector3f lightPos = makeVector3f(0, 80, 0);
 						Vector3f light = lightPos - hit;								// <-- intersection to lightsource vector
 						Vector3f normal = makeVector3f(0,0,0);
 						calculateSurfaceNormal(triangle, normal);
@@ -197,63 +196,25 @@ void MyMeshExperiment::shootRays()
 						normal = makeVector3f(0, 0, 0) - normal;
 						float weight = std::abs(light * normal);
 
-						if (hit[1] < 0) //plane
+
+						// Colours.
+						if (hit[1] < 0) //plane, chekered pattern (red/white)
 						{
-							if (mod(hit[0] / 35, 2) == mod(hit[2] / 35, 2))
-							{
-								pts->set<float32, 3>(tind[0], COL, makeVector3f(1, 0, 0));
-								pts->set<float32, 3>(tind[1], COL, makeVector3f(1, 0, 0));
-								pts->set<float32, 3>(tind[2], COL, makeVector3f(1, 0, 0));
-							}
+							if (mod(hit[0] / 500, 2) == mod(hit[2] / 500, 2))
+								objectColour = makeVector3f(1, 0, 0);							
 							else
-							{
-								pts->set<float32, 3>(tind[0], COL, makeVector3f(1, 1, 1));
-								pts->set<float32, 3>(tind[1], COL, makeVector3f(1, 1, 1));
-								pts->set<float32, 3>(tind[2], COL, makeVector3f(1, 1, 1));
-							}
+								objectColour = makeVector3f(1, 1, 1);							
 						}
-						else
-							pts->set<float32, 3>(tind[0], COL, makeVector3f(1, 1, 1));
-						objectColour = pts->get<float32, 3>(tind[0], COL);
+						else // object colours.
+							objectColour = makeVector3f(1, 1, 1);
+						
 
 						// Calculate shadows.
-						if (softShadows)
-						{
-							float shadowWeight = getSoftShadow(ray, distance, lightPos);
-
-							if (shadowWeight == 1)	//<-- no shadow
-								bestColour = makeVector3f((weight + 0.1f) / 1.1f, (weight + 0.1f) / 1.1f, (weight + 0.1f) / 1.1f);
-							else
-								bestColour = makeVector3f((weight + 0.1f) / 1.1f  * shadowWeight, (weight + 0.1f) / 1.1f * shadowWeight, (weight + 0.1f) / 1.1f * shadowWeight);		// <-- default object color (almost black)
-						
-						}
-						else //hard shadows
-						{
-							bool shadow = checkShadow(ray, distance, lightPos);		// <-- check if there are triangles blocking the light
-							if (!shadow)
-								bestColour = makeVector3f((weight + 0.1f) / 1.1f, (weight + 0.1f) / 1.1f, (weight + 0.1f) / 1.1f);
-							else
-							{
-								bestColour = makeVector3f(0.1, 0.1, 0.1);		// <-- default shadow color (almost black)
-								//bestColour = (colour[0] / 3 + colour[1] / 3 + colour[2] / 3)*0.3;	
-							}	
-						}
-
-						Vector3f objAndShadowCol = (objectColour + bestColour) / 2;
-						
-						/*pts->set3f(tind[0], COL, objAndShadowCol);
-						pts->set3f(tind[1], COL, objAndShadowCol);
-						pts->set3f(tind[2], COL, objAndShadowCol);*/
-						
-						pts->set<float32, 3>(tind[0], COL, objAndShadowCol);
-						pts->set<float32, 3>(tind[1], COL, objAndShadowCol);
-						pts->set<float32, 3>(tind[2], COL, objAndShadowCol);
-
-						colours[x][y] = pts->get<float32, 3>(tind[0], COL);
+						shadowColour =  calculateShadow(ray, distance, weight);					
+						colours[x][y] = (objectColour + shadowColour) / 2; //<-- Object colour, local shading and shadow
 					}
 					
-				}
-				
+				}				
 			}
 			
 
@@ -261,10 +222,10 @@ void MyMeshExperiment::shootRays()
 			float distance2;											// <-- scalar multiplied with ray direction is distance
 			float minDistance2 = 99999;								// <-- used to find nearest triangle
 			int minDistanceId2 = -1;									// <-- check for background
-			Vector3f bestColour2;
-
+			Vector3f bestColour2, shadowColour2;
 			Vector3f closestHit = std::get<0>(ray) +std::get<1>(ray)*minDistance;
-			thereWasARefelction = false;
+
+			// Loop over all triangles and check for intersection with reflected ray.
 			for (card32 j = 0; j < numTri; j++)
 			{
 				Vector3i tind2 = idx->get<int32, 3>(j, IDX);			// <-- triangle index of vertices (comes from triangle dynamic thing)
@@ -276,49 +237,69 @@ void MyMeshExperiment::shootRays()
 
 				// get intersection + distance
 				thereIsAReflection = tri->getIntersection(closestHit + outgoingRay*0.02, outgoingRay, pos2, distance2);		// <-- distance is a result
-				//if (closestHit[1] < 0)
+				if (closestHit[1] > 0)								// <-- everything above plane is reflective
 				if (thereIsAReflection)
 				{
 
 					if (distance2 < minDistance2)						// <-- check if closest
 					{
-						thereWasARefelction = true;
 						minDistance2 = distance2;							// <-- set current triangle as closest
 						minDistanceId2 = j;								// <-- a check to see if current current triangle is closer than existing
+						Vector3f newHit = closestHit + outgoingRay*distance2;
+						tuple<Vector3f, Vector3f> ray2 = make_tuple(closestHit, outgoingRay);
+						Vector3f light = lightPos - newHit;								// <-- intersection to lightsource vector
+						Vector3f normal = makeVector3f(0, 0, 0);
+						calculateSurfaceNormal(pos2, normal);
+						light.normalize();
+						normal.normalize();
+						normal = makeVector3f(0, 0, 0) - normal;
+						float weight = std::abs(light * normal);
 
-						//if (hit[1] <= 0)
-						//{
-						//	//if (mod(hit[0] / 20, 2) == mod(hit[2] / 20, 2))
-						//		pts->set<float32, 3>(tind2[0], COL, makeVector3f(0, 1, 0));
-						//}
-						Vector3f colour2[3];
-						colour2[0] = pts->get<float32, 3>(tind2[0], COL);
-						colour2[1] = pts->get<float32, 3>(tind2[1], COL);
-						colour2[2] = pts->get<float32, 3>(tind2[2], COL);
+						if (newHit[1] <= 1)	//<-- plane reflection
+						{
+							// Chekered pattern
+							if(mod(newHit[0] / 500, 2) == mod(newHit[2] / 500, 2))
+									bestColour2 = makeVector3f(1, 0, 0);
+							else
+									bestColour2 = makeVector3f(1, 1, 1);
+						}
 
-						bestColour2 = (colour2[0] + colour2[1] + colour2[2]) / 3; //makeVector3f(1, 0, 0);//
-
-						if (x > 95 && x < 105 && y > 95 && y < 105)
-							output << bestColour2 << " " << x << " " << y << " " << j << " " << distance2 << " ray: " << get<1>(ray) << " outgoing ray: " << outgoingRay << " normal: " << closestHit << "\n";
-
-						/*pts->set<float32, 3>(tind[0], COL, bestColour2);
-						pts->set<float32, 3>(tind[1], COL, bestColour2);
-						pts->set<float32, 3>(tind[2], COL, bestColour2);*/
-
-
-
+						shadowColour2 = calculateShadow(ray2, distance2, weight);
+						colours[x][y] = (colours[x][y] + shadowColour2 + bestColour2) / 3;		//<-- perfect reflection, added objectcolour and shadow colour of the reflected area 
 					}
 				}
-			}
-			if (thereWasARefelction)
-				colours[x][y] = bestColour2;//(colours[x][y] + bestColour2)/2;
-			/*else
-				colours[x][y] = pts->get<float32, 3>(tind[0], COL);*/
-
+			}			
 		}//rays
 	}
 	delete tri;
 }
+
+Vector3f MyMeshExperiment::calculateShadow(tuple<Vector3f, Vector3f> ray, float distance, float weight)
+{
+	Vector3f bestColour;
+
+	// Calculate shadows, including local shading.
+	if (softShadows)
+	{
+		float shadowWeight = getSoftShadow(ray, distance, lightPos);
+
+		if (shadowWeight == 1)	//<-- no shadow
+			bestColour = makeVector3f((weight + 0.1f) / 1.1f, (weight + 0.1f) / 1.1f, (weight + 0.1f) / 1.1f);
+		else
+			bestColour = makeVector3f((weight + 0.1f) / 1.1f  * shadowWeight, (weight + 0.1f) / 1.1f * shadowWeight, (weight + 0.1f) / 1.1f * shadowWeight);		// <-- default object color (almost black)
+
+	}
+	else //hard shadows
+	{
+		bool shadow = checkShadow(ray, distance, lightPos);		// <-- check if there are triangles blocking the light
+		if (!shadow)
+			bestColour = makeVector3f((weight + 0.1f) / 1.1f, (weight + 0.1f) / 1.1f, (weight + 0.1f) / 1.1f);
+		else
+			bestColour = makeVector3f(0.1, 0.1, 0.1);		// <-- default shadow color (almost black)
+	}
+	return bestColour; //<-- Object colour, local shading and shadow
+}
+
 
 void MyMeshExperiment::calculateDot()
 {

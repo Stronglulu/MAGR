@@ -24,7 +24,10 @@ private:
 	ExaminerCameraController* controller;
 	tuple<Vector3f, Vector3f> rays[201][201];
 	Vector3f colours[201][201];
+	Vector3f reflectRays[201][201];
+	float minDistances[201][201];
 	int 	size = 200;
+	Vector3f lightPos = makeVector3f(0, 80, 0);
 
 public:
 
@@ -38,6 +41,7 @@ public:
 	void getRays();
 	void shootRays();
 	bool checkShadow(tuple<Vector3f, Vector3f>, float,Vector3f);
+	Vector3f MyMeshExperiment::calculateShadow(tuple<Vector3f, Vector3f>, float, float);
 	float getSoftShadow(tuple<Vector3f, Vector3f>, float, Vector3f);
 	int mod(float, int);
 
