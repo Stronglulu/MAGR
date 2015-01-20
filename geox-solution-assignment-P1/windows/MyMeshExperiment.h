@@ -22,11 +22,12 @@ private:
 	TriangleMesh *mesh;
 	SimpleGLMeshMaterial *renderer;
 	ExaminerCameraController* controller;
-	tuple<Vector3f, Vector3f> rays[401][401];
-	Vector3f colours[401][401];
-	Vector3f reflectRays[401][401];
-	float minDistances[401][401];
-	int 	size = 400;
+	tuple<Vector3f, Vector3f> rays[201][201];
+	Vector3f colours[201][201];
+	Vector3f reflectRays[201][201];
+	float minDistances[201][201];
+	int 	size = 200;
+	int checkerSize = 20;
 	Vector3f lightPos = makeVector3f(0, 80, 0);
 
 public:
@@ -44,6 +45,8 @@ public:
 	Vector3f MyMeshExperiment::calculateShadow(tuple<Vector3f, Vector3f>, float, float);
 	float getSoftShadow(tuple<Vector3f, Vector3f>, float, Vector3f);
 	int mod(float, int);
+	Vector3f getPlaneColor(Vector3f);
+	float getLocalWeight(Vector3f, Vector3f[]);
 
 	int32 gridSize;
 	Vector3f incomingRay;                           // <---
@@ -52,6 +55,7 @@ public:
 	Vector3f vertex3;
 	bool softShadows = true;
 	bool perfectReflection = false;
+	bool checkeredPlane = true;
 	//Matrix3f triangleRefl;                           // <--- declare the parameters you need (will be registered in *.cpp file)
 
 	void calculateDot();

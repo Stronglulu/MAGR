@@ -193,23 +193,11 @@ void MyMeshExperiment::shootRays()
 
 						// calculations for local shading
 						Vector3f hit = (std::get<0>(ray) +std::get<1>(ray)*distance);				// <-- location of where ray hit triangle 
-						Vector3f light = lightPos - hit;								// <-- intersection to lightsource vector
-						Vector3f normal = makeVector3f(0,0,0);
-						calculateSurfaceNormal(triangle, normal);
-						light.normalize();
-						normal.normalize();
-						normal = makeVector3f(0, 0, 0) - normal;
-						float weight = std::abs(light * normal);
-
+						float weight = getLocalWeight(hit, triangle);
 
 						// Colours.
-						if (hit[1] < 0) //plane, chekered pattern (red/white)
-						{
-							if (mod(hit[0] / 20, 2) == mod(hit[2] / 20, 2))
-								objectColour = makeVector3f(1, 0, 0);							
-							else
-								objectColour = makeVector3f(1, 1, 1);							
-						}
+						if (hit[1] < 0) //plane
+							objectColour = getPlaneColor(hit);
 						else // object colours.
 							objectColour = makeVector3f(1, 1, 1);
 						
@@ -255,23 +243,11 @@ void MyMeshExperiment::shootRays()
 								minDistanceId2 = j;								// <-- a check to see if current current triangle is closer than existing
 								Vector3f newHit = closestHit + outgoingRay*distance2;
 								tuple<Vector3f, Vector3f> ray2 = make_tuple(closestHit, outgoingRay);
-								Vector3f light = lightPos - newHit;								// <-- intersection to lightsource vector
-								Vector3f normal = makeVector3f(0, 0, 0);
-								calculateSurfaceNormal(pos2, normal);
-								light.normalize();
-								normal.normalize();
-								normal = makeVector3f(0, 0, 0) - normal;
-								float weight = std::abs(light * normal);
+								float weight = getLocalWeight(newHit, pos2); 
 
 								if (newHit[1] <= 1)	//<-- plane reflection
-								{
-									// Chekered pattern
-									if (mod(newHit[0] / 20, 2) == mod(newHit[2] / 20, 2))
-										bestColour2 = makeVector3f(1, 0, 0);
-									else
-										bestColour2 = makeVector3f(1, 1, 1);
-								}
-
+									bestColour2 = getPlaneColor(newHit);
+								
 								shadowColour2 = calculateShadow(ray2, distance2, weight);
 								colours[x][y] = (colours[x][y] + shadowColour2 + bestColour2) / 3;		//<-- perfect reflection, added objectcolour and shadow colour of the reflected area 
 							}
@@ -310,23 +286,11 @@ void MyMeshExperiment::shootRays()
 										numReflected++;
 										Vector3f newHit = closestHit + newOutgoingRay*distance2;
 										tuple<Vector3f, Vector3f> ray2 = make_tuple(closestHit, outgoingRay);
-										Vector3f light = lightPos - newHit;								// <-- intersection to lightsource vector
-										Vector3f normal = makeVector3f(0, 0, 0);
-										calculateSurfaceNormal(pos2, normal);
-										light.normalize();
-										normal.normalize();
-										normal = makeVector3f(0, 0, 0) - normal;
-										float weight = std::abs(light * normal);
+										float weight = getLocalWeight(newHit, pos2);  
 
 										if (newHit[1] <= 1)	//<-- plane reflection
-										{
-											// Chekered pattern
-											if (mod(newHit[0] / 20, 2) == mod(newHit[2] / 20, 2))
-												bestColour2 = makeVector3f(1, 0, 0);
-											else
-												bestColour2 = makeVector3f(1, 1, 1);
-										}
-
+											bestColour2 = getPlaneColor(newHit);
+										
 										shadowColour2 = calculateShadow(ray2, distance2, weight);
 										totalColor += (shadowColour2 + bestColour2) / 2;
 									}
@@ -341,6 +305,31 @@ void MyMeshExperiment::shootRays()
 		}//rays
 	}
 	delete tri;
+}
+
+
+float MyMeshExperiment::getLocalWeight(Vector3f hit, Vector3f pos[])
+{
+	Vector3f light = lightPos - hit;								// <-- intersection to lightsource vector
+	Vector3f normal = makeVector3f(0, 0, 0);
+	calculateSurfaceNormal(pos, normal);
+	light.normalize();
+	normal.normalize();
+	normal = makeVector3f(0, 0, 0) - normal;
+	return std::abs(light * normal);
+}
+
+Vector3f MyMeshExperiment::getPlaneColor(Vector3f hit)
+{
+	if (checkeredPlane)		// Chekered pattern (red/white)
+	{
+		if (mod(hit[0] / checkerSize, 2) == mod(hit[2] / checkerSize, 2))
+			return makeVector3f(1, 0, 0);
+		else
+			return makeVector3f(1, 1, 1);
+	}
+	else
+		return makeVector3f(0, 0, 1); // Blue plane.
 }
 
 Vector3f MyMeshExperiment::calculateShadow(tuple<Vector3f, Vector3f> ray, float distance, float weight)
