@@ -83,6 +83,11 @@ void MyMeshExperiment::renderGL()
 
 void MyMeshExperiment::getViewerInfo() 
 {
+	//// Clear image
+	//for (int x = 0; x < size; ++x)
+	//	for (int y = 0; y < size; ++x)
+	//		colours[x][y] = makeVector3f(1, 1, 1);
+
 	controller = viewer->getController();
 	Vector3f tris[3] = {vertex1, vertex2, vertex3};
 
@@ -200,7 +205,7 @@ void MyMeshExperiment::shootRays()
 						// Colours.
 						if (hit[1] < 0) //plane, chekered pattern (red/white)
 						{
-							if (mod(hit[0] / 500, 2) == mod(hit[2] / 500, 2))
+							if (mod(hit[0] / 20, 2) == mod(hit[2] / 20, 2))
 								objectColour = makeVector3f(1, 0, 0);							
 							else
 								objectColour = makeVector3f(1, 1, 1);							
@@ -236,36 +241,100 @@ void MyMeshExperiment::shootRays()
 
 
 				// get intersection + distance
-				thereIsAReflection = tri->getIntersection(closestHit + outgoingRay*0.02, outgoingRay, pos2, distance2);		// <-- distance is a result
+				
 				if (closestHit[1] > 0)								// <-- everything above plane is reflective
-				if (thereIsAReflection)
 				{
-
-					if (distance2 < minDistance2)						// <-- check if closest
+					thereIsAReflection = tri->getIntersection(closestHit + outgoingRay*0.02, outgoingRay, pos2, distance2);		// <-- distance is a result
+					if (thereIsAReflection)
 					{
-						minDistance2 = distance2;							// <-- set current triangle as closest
-						minDistanceId2 = j;								// <-- a check to see if current current triangle is closer than existing
-						Vector3f newHit = closestHit + outgoingRay*distance2;
-						tuple<Vector3f, Vector3f> ray2 = make_tuple(closestHit, outgoingRay);
-						Vector3f light = lightPos - newHit;								// <-- intersection to lightsource vector
-						Vector3f normal = makeVector3f(0, 0, 0);
-						calculateSurfaceNormal(pos2, normal);
-						light.normalize();
-						normal.normalize();
-						normal = makeVector3f(0, 0, 0) - normal;
-						float weight = std::abs(light * normal);
-
-						if (newHit[1] <= 1)	//<-- plane reflection
+						if (distance2 < minDistance2)						// <-- check if closest
 						{
-							// Chekered pattern
-							if(mod(newHit[0] / 500, 2) == mod(newHit[2] / 500, 2))
-									bestColour2 = makeVector3f(1, 0, 0);
-							else
-									bestColour2 = makeVector3f(1, 1, 1);
-						}
+							if (perfectReflection)
+							{
+								minDistance2 = distance2;							// <-- set current triangle as closest
+								minDistanceId2 = j;								// <-- a check to see if current current triangle is closer than existing
+								Vector3f newHit = closestHit + outgoingRay*distance2;
+								tuple<Vector3f, Vector3f> ray2 = make_tuple(closestHit, outgoingRay);
+								Vector3f light = lightPos - newHit;								// <-- intersection to lightsource vector
+								Vector3f normal = makeVector3f(0, 0, 0);
+								calculateSurfaceNormal(pos2, normal);
+								light.normalize();
+								normal.normalize();
+								normal = makeVector3f(0, 0, 0) - normal;
+								float weight = std::abs(light * normal);
 
-						shadowColour2 = calculateShadow(ray2, distance2, weight);
-						colours[x][y] = (colours[x][y] + shadowColour2 + bestColour2) / 3;		//<-- perfect reflection, added objectcolour and shadow colour of the reflected area 
+								if (newHit[1] <= 1)	//<-- plane reflection
+								{
+									// Chekered pattern
+									if (mod(newHit[0] / 20, 2) == mod(newHit[2] / 20, 2))
+										bestColour2 = makeVector3f(1, 0, 0);
+									else
+										bestColour2 = makeVector3f(1, 1, 1);
+								}
+
+								shadowColour2 = calculateShadow(ray2, distance2, weight);
+								colours[x][y] = (colours[x][y] + shadowColour2 + bestColour2) / 3;		//<-- perfect reflection, added objectcolour and shadow colour of the reflected area 
+							}
+							else
+							{
+								// Calculate new basis u, v, w 
+								Vector3f w = outgoingRay;
+								w.normalize();
+								Vector3f t = w;
+								int smallestCompo = 0;
+
+								for (int i = 1; i < 3; ++i)
+									if (t[i] < t[smallestCompo])
+										smallestCompo = i;
+
+								t[smallestCompo] = 0;
+
+								Vector3f u = t.crossProduct(w);
+								Vector3f v = u.crossProduct(w);
+								float glossyness = 40;
+								float numReflected = 0;
+								float color = 0;
+								Vector3f totalColor = makeVector3f(0, 0, 0);
+
+								for (int j = 0; j < 18; ++j)
+								{
+									float rx = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+									float randomX = -glossyness / 2 + rx * glossyness;
+									float ry = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+									float randomY = -glossyness / 2 + ry * glossyness;
+
+									Vector3f newOutgoingRay = outgoingRay + u.operator*(randomX)+v.operator*(randomY);
+
+									thereIsAReflection = tri->getIntersection(closestHit + newOutgoingRay*0.02, newOutgoingRay, pos2, distance2);
+									{
+										numReflected++;
+										Vector3f newHit = closestHit + newOutgoingRay*distance2;
+										tuple<Vector3f, Vector3f> ray2 = make_tuple(closestHit, outgoingRay);
+										Vector3f light = lightPos - newHit;								// <-- intersection to lightsource vector
+										Vector3f normal = makeVector3f(0, 0, 0);
+										calculateSurfaceNormal(pos2, normal);
+										light.normalize();
+										normal.normalize();
+										normal = makeVector3f(0, 0, 0) - normal;
+										float weight = std::abs(light * normal);
+
+										if (newHit[1] <= 1)	//<-- plane reflection
+										{
+											// Chekered pattern
+											if (mod(newHit[0] / 20, 2) == mod(newHit[2] / 20, 2))
+												bestColour2 = makeVector3f(1, 0, 0);
+											else
+												bestColour2 = makeVector3f(1, 1, 1);
+										}
+
+										shadowColour2 = calculateShadow(ray2, distance2, weight);
+										totalColor += (shadowColour2 + bestColour2) / 2;
+									}
+								}
+								colours[x][y] =(colours[x][y] + totalColor / numReflected)/2;		//<-- perfect reflection, added objectcolour and shadow colour of the reflected area 
+
+							}
+						}
 					}
 				}
 			}			
