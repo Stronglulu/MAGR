@@ -200,105 +200,9 @@ void MyMeshExperiment::shootRays()
 				for (int r = 0; r < allSubRays; ++r)
 				{
 					tuple<Vector3f, Vector3f> ray = raysGridded[x][y][r];				// 0: ray origin 1: ray direction
-					//getPathTracing(ray, 0);
-
-					//float distance;											// <-- scalar multiplied with ray direction is distance
-					//float minDistance = 99999;								// <-- used to find nearest triangle
-					//int minDistanceId = -1;									// <-- check for background
-					//Vector3f bestColour, shadowColour;
-					//Vector3f objectColour = makeVector3f(0, 0, 0);
-					//Vector3f outgoingRay;
-					//bool thereIsAReflection = false;
-					//gridRays[r] = objectColour;
-					//Vector3f hit;
-					//Vector3f hitTriangle[3];
-					//// loop over triangle
-					//const card32 numTri = idx->getNumEntries();
-					//for (card32 i = 0; i < numTri; i++)
-					//{
-					//	Vector3i tind = idx->get<int32, 3>(i, IDX);			// <-- triangle index of vertices (comes from triangle dynamic thing)
-					//	Vector3f triangle[3];								// <-- position of all vertices of the triangle
-					//	triangle[0] = pts->get<float32, 3>(tind[0], POS);
-					//	triangle[1] = pts->get<float32, 3>(tind[1], POS);
-					//	triangle[2] = pts->get<float32, 3>(tind[2], POS);
-					//	
-					//	// get intersection + distance
-					//	bool intersection = tri->getIntersection(std::get<0>(ray), std::get<1>(ray), triangle, distance);		// <-- distance is a result
-					//	if (intersection)
-					//	{
-					//		if (distance < minDistance)						// <-- check if closest
-					//		{
-					//			intersected++;
-					//			//getOutgoingReflection(std::get<1>(ray), triangle, outgoingRay); // get outgoing ray for reflection
-					//			//reflectRays[x][y] = outgoingRay;
-					//			minDistance = distance;							// <-- set current triangle as closest					
-					//			minDistances[x][y] = distance;
-					//			minDistanceId = i;								// <-- a check to see if current current triangle is closer than existing
-
-					////			// calculations for local shading in shadows
-					//			hit = (std::get<0>(ray) +std::get<1>(ray)*distance);				// <-- location of where ray hit triangle 
-					//			for (int triangleIndex = 0; triangleIndex < 3; ++triangleIndex)
-					//			hitTriangle[triangleIndex] = triangle[triangleIndex];
-
-					////			Vector3f normal = makeVector3f(0, 0, 0);
-					////			calculateSurfaceNormal(triangle, normal);
-					////			normal.normalize();
-
-					////			// Generate new random vector on the hemisphere of hit
-					////			float rx = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-					////			float ry = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-					////			float rz = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-					////			Vector3f randomVector = makeVector3f(rx, ry, rz);
-					////			randomVector.normalize();
-					////			randomVector += hit;
-					////			float weight = std::abs(randomVector * normal);
-
-					////			//float cosTheta = normal* randomVector;
-					////			//if (cosTheta < 0)
-					////			//{
-					////			//	randomVector*(-1);
-					////			//	cosTheta = normal * randomVector;
-					////			//}												
-					////			//Vector3f light = lightPos - hit;								// <-- intersection to lightsource vector
-					////			//light.normalize();
-					////			//normal = makeVector3f(0, 0, 0) - normal;
-					////			
-
-					//			// COLOURS
-					//			if (hit[1] < 0) //plane
-					//				objectColour = getPlaneColor(hit);
-					//			else // object colours.
-					//				objectColour = makeVector3f(1, 1, 1);
-
-					//			float rx = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-					//			float ry = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-					//			float rz = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-					//			outgoingRay = makeVector3f(rx, ry, rz);
-					//			outgoingRay.normalize();
-					//			outgoingRay += hit;
-
-
-					//			// SHADOWS
-					//			//shadowColour = calculateShadow(ray, distance, weight);
-					//			//int bla = getPathTracing(x, y, make_tuple(hit, outgoingRay), 0);
-					//			//if (bla == 1)
-					//			//	intersected2++;
-					//			//gridRays[r] = objectColour * bla; // (objectColour + shadowColour) / 2;
-					//			//tempCol += objectColour * bla;
-					//			/*if (x > 95 && x < 106 && y > 95 && y < 106)
-					//				output << x << " " << y << " " << bla << " " << intersected << " "<< intersected2 << "\n";*/
-					//			//colours[x][y] = (objectColour + shadowColour) / 2; //<-- Object colour, local shading and shadow
-					//		}
-					//	}
-					//}
-
-					// Go in recursion with the closest hit
-					//colours[x][y] = getPathTracing(ray, 0);
-					//normalizeFactor = 0;
 					Vector3f tempCol = getPathTracing(ray, 0);
-					
-					//tempCol = makeVector3f(tempCol[0] * 1000, tempCol[1] * 1000, tempCol[2] * 1000);
-					gridRays[r] = tempCol;// / normalizeFactor;
+					gridRays[r] = tempCol;
+
 					/*float largestCol = 0;
 
 					for (int colIndex = 1; colIndex < 3; ++colIndex)
@@ -317,11 +221,8 @@ void MyMeshExperiment::shootRays()
 					{
 						gridRays[r] = tempCol;
 					}*/
-
-
 				}
-				//if (intersected2 > 0)
-				//{
+
 				colours[x][y] = getAverageSubPixels(gridRays, allSubRays);
 				if (colours[x][y][0] > 1)
 					colours[x][y][0] = 1;
@@ -329,15 +230,7 @@ void MyMeshExperiment::shootRays()
 					colours[x][y][1] = 1;
 				if (colours[x][y][2] > 1)
 					colours[x][y][2] = 1;
-				
-				//	colours[x][y] = tempCol / allSubRays;
-				//	if (x > 95 && x < 106 && y > 95 && y < 106)
-				//		output << colours[x][y] << " " << tempCol;
-				//}
-				//else
-				//	colours[x][y] = makeVector3f(0, 0, 0);
-				
-				
+						
 			}
 			else
 			{
@@ -569,121 +462,21 @@ Vector3f MyMeshExperiment::getPathTracing(tuple<Vector3f, Vector3f> ray, int dep
 	//normalizeFactor += 1 / divide;
 
 	if (shadow)
-	{
-		weight = 0;
-		//Vector3f color = makeVector3f(0, 0, 0);// *weight;
-	//	
-	//	return color;// / divide;// getPathTracing(make_tuple(hit, outgoingRay), depth + 1); //makeVector3f(0, 0, 0) + getPathTracing(make_tuple(hit, outgoingRay), depth + 1);
-	}	
+		weight = 0;	
 	else if (hit[1] > 100)
-	{
 		return  makeVector3f(1, 1, 1);// / pow(depth, absorbtionP); //lightIntensity;
-	//	//float divide = pow(absorbtionP, depth);// (lightDistance * lightDistance * pow(absorbtionP, depth));
-	//	return makeVector3f(1, 1, 1) / (lightDistance * lightDistance * pow(absorbtionP, depth)); //color / divide; 
-	}
-	//else
-	//{
-		//Vector3f color = getColour(hit);// * weight;// lightIntensity;
-		//float divide = pow(absorbtionP, depth); //(lightDistance * lightDistance * pow(absorbtionP, depth));
-		
-		//return color / divide + getPathTracing(make_tuple(hit, outgoingRay), depth + 1); //
+	
+
 		if (lightDistance == 0)
 			return makeVector3f(0, 0, 0);
 		
-		Vector3f newHit = hit + outgoingRay * 0.1;
+	Vector3f newHit = hit + outgoingRay * 0.1;
 
 		
-		//return getColour(hit) * weight / (lightDistance * pow(depth, absorbtionP)) + getPathTracing(make_tuple(newHit, outgoingRay), depth + 1);  //(getColour(hit) / (lightDistance * lightDistance * pow(absorbtionP, depth)));// +getPathTracing(make_tuple(hit, outgoingRay), depth + 1);
+	//return getColour(hit) * weight / (lightDistance * pow(depth, absorbtionP)) + getPathTracing(make_tuple(newHit, outgoingRay), depth + 1);  //(getColour(hit) / (lightDistance * lightDistance * pow(absorbtionP, depth)));// +getPathTracing(make_tuple(hit, outgoingRay), depth + 1);
 	
-		return getColour(hit) * weight * 100 * 100 / (lightDistance * divide) + getPathTracing(make_tuple(newHit, outgoingRay), depth + 1);
-		//}
+	return getColour(hit) * weight * 100 * 100 / (lightDistance * divide) + getPathTracing(make_tuple(newHit, outgoingRay), depth + 1);
 
-
-
-
-
-
-	////tuple<Vector3f, Vector3f> ray = raysGridded[x][y][r];				// 0: ray origin 1: ray direction
-	//float distance;											// <-- scalar multiplied with ray direction is distance
-	//float minDistance = 99999;								// <-- used to find nearest triangle
-	//int minDistanceId = -1;									// <-- check for background
-	//Vector3f bestColour, objectColour, shadowColour;
-	//Vector3f outgoingRay;
-	//bool thereIsAReflection = false;
-	//Vector3f hit;
-	//float weight;
-	//bool wasIntersected = false;
-
-	////checkShadow(ray, );
-	////objectColour = getColour(hit);
-
-	//// loop over triangle
-	//const card32 numTri = idx->getNumEntries();
-	//for (card32 i = 0; i < numTri; i++)
-	//{
-	//	Vector3i tind = idx->get<int32, 3>(i, IDX);			// <-- triangle index of vertices (comes from triangle dynamic thing)
-	//	Vector3f triangle[3];								// <-- position of all vertices of the triangle
-	//	triangle[0] = pts->get<float32, 3>(tind[0], POS);
-	//	triangle[1] = pts->get<float32, 3>(tind[1], POS);
-	//	triangle[2] = pts->get<float32, 3>(tind[2], POS);
-
-	//	// get intersection + distance
-	//	bool intersection = tri->getIntersection(std::get<0>(ray), std::get<1>(ray), triangle, distance);		// <-- distance is a result
-	//	if (intersection)
-	//	{
-	//		wasIntersected = true;
-	//		if (distance < minDistance)						// <-- check if closest
-	//		{
-	//			wasIntersected = true;
-	//			//getOutgoingReflection(std::get<1>(ray), triangle, outgoingRay); // get outgoing ray for reflection
-	//			//reflectRays[x][y] = outgoingRay;
-	//			minDistance = distance;							// <-- set current triangle as closest					
-	//			//minDistances[x][y] = distance;
-	//			minDistanceId = i;								// <-- a check to see if current current triangle is closer than existing
-
-	//			// calculations for local shading in shadows
-	//			//hit = (std::get<0>(ray) +std::get<1>(ray)*distance);				// <-- location of where ray hit triangle 
-	//			Vector3f normal = makeVector3f(0, 0, 0);
-	//			calculateSurfaceNormal(triangle, normal);
-	//			normal.normalize();
-
-	//			// Generate random outgoing ray on the hemisphere of hit
-	//			float rx = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-	//			float ry = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-	//			float rz = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-	//			outgoingRay = makeVector3f(rx, ry, rz);
-	//			outgoingRay.normalize();
-	//			//outgoingRay += hit;
-	//			weight = 1;//(depth + 1);//std::abs(outgoingRay * normal);
-
-	//			//// COLOURS
-	//			//if (hit[1] < 0) //plane
-	//			//	objectColour = getPlaneColor(hit);
-	//			//else // object colours.
-	//			//	objectColour = makeVector3f(1, 1, 1);
-
-	//			if (hit[1] > 100)
-	//				return 1;
-	//			else
-	//			{
-	//				float absorbChance = 0.1f; //abs(outgoingRay * normal);
-	//				float dice = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-	//				if (dice < absorbChance)
-	//					return 0;
-	//				else
-	//					return 0;//getPathTracing(, depth + 1);
-
-	//			}
-
-	//		}
-	//	}
-	//}
-	//if (!wasIntersected)
-	//	return 0;
-
-	//bestColour = getPathTracing(x, y, make_tuple(hit, outgoingRay), depth + 1, intersected);
-
-	//return objectColour + (bestColour * weight);
 }
 
 bool MyMeshExperiment::checkRecursionShadow(Vector3f hit, Vector3f lightPos)
