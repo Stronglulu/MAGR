@@ -22,13 +22,36 @@ private:
 	TriangleMesh *mesh;
 	SimpleGLMeshMaterial *renderer;
 	ExaminerCameraController* controller;
-	tuple<Vector3f, Vector3f> rays[201][201];
-	Vector3f colours[201][201];
-	Vector3f reflectRays[201][201];
-	float minDistances[201][201];
-	int 	size = 200;
-	int checkerSize = 20;
-	Vector3f lightPos = makeVector3f(0, 80, 0);
+
+	// Image 
+	int 	size = 100;
+	tuple<Vector3f, Vector3f> rays[101][101];
+	Vector3f colours[101][101];
+	Vector3f reflectRays[101][101];
+	float minDistances[101][101];
+	const static int rayContainerSize = 101;	// Stores rays for jitter
+	
+	// Jitter
+	const static int gridSize = 10;						// <-- SHOULD ONLY BE UNEVEN
+	const static int numSubRays = gridSize * gridSize;
+	const static int gridSpacer = (gridSize - 1) / 2;
+	bool randomIsOn = false;
+	Vector3f gridRays[numSubRays];
+	tuple<Vector3f, Vector3f> raysGridded[rayContainerSize][rayContainerSize][numSubRays + 1]; //[Heighth][Width][numRays]. 1-gridSq reserved for random, last for center ray.
+	bool checkShadow2(tuple<Vector3f, Vector3f>, float, Vector3f, card32);
+
+
+	int checkerSize = 3;
+	Vector3f lightPos = makeVector3f(0, 100, 0);
+	bool jitter = true;
+	bool pathTracing = true;
+	int maxDepth = 4;
+	float absorbtionP = 0.9;
+	float lightIntensity = 10000;
+	float normalizeColor;
+	float normalizeFactor;
+
+	
 
 public:
 
@@ -47,15 +70,22 @@ public:
 	int mod(float, int);
 	Vector3f getPlaneColor(Vector3f);
 	float getLocalWeight(Vector3f, Vector3f[]);
+	Vector3f getAverageSubPixels(Vector3f[], int);
+	Vector3f getTotalSubPixels(Vector3f rays[], int length);
+	//float getPathTracing(tuple<Vector3f, Vector3f>, int);
+	Vector3f getPathTracing(tuple<Vector3f, Vector3f>, int);
+	Vector3f getColour(Vector3f);
+	bool MyMeshExperiment::checkRecursionShadow(Vector3f hit, Vector3f lightPos);
 
-	int32 gridSize;
+	//int32 gridSize;
 	Vector3f incomingRay;                           // <---
 	Vector3f vertex1;
 	Vector3f vertex2;
 	Vector3f vertex3;
-	bool softShadows = true;
-	bool perfectReflection = false;
-	bool checkeredPlane = true;
+	bool softShadows = false;
+	bool perfectReflection = true;
+	bool checkeredPlane = false;
+
 	//Matrix3f triangleRefl;                           // <--- declare the parameters you need (will be registered in *.cpp file)
 
 	void calculateDot();
